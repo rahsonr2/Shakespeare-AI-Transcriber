@@ -94,11 +94,15 @@ REWRITTEN SHAKESPEAREAN VERSION:
     )
     return tokenizer.decode(output[0], skip_special_tokens=True)
 
+def clear_fields():
+    st.session_state.hamlet_text = ""
+    st.session_state.selected_style = "Select..."
+    st.session_state.custom_style = ""
+
 st.title("Hamlet to Modern English Translator")
 
-hamlet_text = st.text_area("Enter Hamlet Excerpt", height=250)
-
 style_options = [
+    "Select...",
     "Make it sound like Shakespeare",
     "Darker and more tragic tone",
     "Highly poetic with rich metaphors",
@@ -107,19 +111,38 @@ style_options = [
     "Other"
 ]
 
-selected_style = st.selectbox("Choose a Style", style_options)
+hamlet_text = st.text_area(
+    "Enter Hamlet Excerpt",
+    height=250,
+    key="hamlet_text"
+)
+
+selected_style = st.selectbox(
+    "Choose a Style",
+    style_options,
+    key="selected_style"
+)
 
 custom_style = ""
 if selected_style == "Other":
-    custom_style = st.text_input("Enter your custom style")
+    custom_style = st.text_input(
+        "Enter your custom style",
+        key="custom_style"
+    )
 
-final_style_prompt = custom_style.strip() if selected_style == "Other" else selected_style
+final_style_prompt = (
+    st.session_state.custom_style.strip()
+    if selected_style == "Other"
+    else selected_style
+)
 
 if st.button("Run Transformation"):
 
     if not hamlet_text.strip():
         st.error("Please enter some text.")
-    elif selected_style == "Other" and not custom_style.strip():
+    elif selected_style == "Select...":
+        st.error("Please choose a style.")
+    elif selected_style == "Other" and not st.session_state.custom_style.strip():
         st.error("Please enter a custom style prompt.")
     else:
 
@@ -184,3 +207,5 @@ STYLE USED
             file_name="hamlet_transformation.txt",
             mime="text/plain"
         )
+
+        st.button("Clear", on_click=clear_fields)
