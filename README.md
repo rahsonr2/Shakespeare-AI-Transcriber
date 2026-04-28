@@ -1,4 +1,4 @@
-# AI-Transcriber-CS630-Final
+# AI-Transcriber-CS630-Final (How to Run)
 
 # 1(a). access either delta ai or purdue anvil via terminal
   Delta AI instructions:
