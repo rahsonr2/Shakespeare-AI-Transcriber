@@ -99,7 +99,7 @@ def clear_fields():
     st.session_state.selected_style = "Select..."
     st.session_state.custom_style = ""
 
-st.title("Hamlet to Modern English Translator")
+st.title("Hamlet to Modern English Transcriber")
 
 style_options = [
     "Select...",
@@ -204,7 +204,7 @@ STYLE USED
         st.download_button(
             label="Download Output File",
             data=output_text,
-            file_name="hamlet_transformation.txt",
+            file_name="hamlet_transcribed.txt",
             mime="text/plain"
         )
 
