@@ -60,7 +60,7 @@
 # 4(a). Run Script (Supercomputer)
 
 
-  (Local PC (powershell))
+  (Local PC (PowerShell))
   
     ssh -L 8501:(node):8501 (username)@delta.ncsa.illinois.edu
   
