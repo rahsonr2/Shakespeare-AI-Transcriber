@@ -55,4 +55,12 @@
 
   
 # 4. run script
-  streamlit run app.py --server.address 0.0.0.0 --server.port 8501
+
+  (Local PC (powershell)) ssh -L 8501:(node):8501 (username)@delta.ncsa.illinois.edu
+  
+  **Note: If it asks for a password, it is (your access password) + (6 digit code from duo app). Ex: Password123?012345**
+
+  
+  (Delta/Anvil) streamlit run app.py --server.address 0.0.0.0 --server.port 8501
+
+  run http://localhost:8501 in browser
