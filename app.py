@@ -2,7 +2,7 @@ import streamlit as st
 from groq import Groq
 from sentence_transformers import SentenceTransformer, util
 
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+client = Groq(api_key=st.secrets["groq_key"])
 
 @st.cache_resource
 def load_embedder():
@@ -10,11 +10,11 @@ def load_embedder():
 
 embedder = load_embedder()
 
-MODEL_NAME = "llama-3.3-70b-versatile"
+model = "llama-3.3-70b-versatile"
 
-def query_model(prompt, max_tokens=200, temperature=0.5):
+def query(prompt, max_tokens=200, temperature=0.5):
     response = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,
         temperature=temperature,
@@ -22,9 +22,9 @@ def query_model(prompt, max_tokens=200, temperature=0.5):
     )
     return response.choices[0].message.content.strip()
 
-def stream_model(prompt, max_tokens=200, temperature=0.5):
+def stream(prompt, max_tokens=200, temperature=0.5):
     stream = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,
         temperature=temperature,
@@ -43,19 +43,19 @@ def stream_model(prompt, max_tokens=200, temperature=0.5):
 
     return full_text.strip()
 
-def compute_bert_similarity(text1, text2):
+def bert_similarity(text1, text2):
     embeddings = embedder.encode([text1, text2], convert_to_tensor=True)
     similarity = util.cos_sim(embeddings[0], embeddings[1])
     return float(similarity)
 
-def get_similarity_label(score):
+def get_score(score):
     if score >= 0.75:
         return "High"
     elif score >= 0.5:
         return "Medium"
     return "Low"
 
-def to_modern_english_stream(text):
+def modern_english_stream(text):
     prompt = f"""
 Convert this Shakespeare text into clear modern English.
 
@@ -63,21 +63,23 @@ Rules:
 - Keep meaning the same
 - Be concise
 - No extra commentary
+- Target length: 400–500 words
 
 TEXT:
 {text}
 """
-    return stream_model(prompt, max_tokens=150, temperature=0.3)
+    return stream(prompt, max_tokens=900, temperature=0.3)
 
-def to_shakespeare_stream(summary, style_prompt):
+def shakespeare_stream(summary, style_prompt):
     prompt = f"""
 Rewrite this into Shakespearean English.
 
 Rules:
 - Do NOT copy wording
-- Use archaic language (thou, thee, thy, hath, doth)
+- Use archaic language
 - Make it poetic
 - Keep meaning
+- Target length: 400–500 words
 
 STYLE:
 {style_prompt}
@@ -85,7 +87,7 @@ STYLE:
 TEXT:
 {summary}
 """
-    return stream_model(prompt, max_tokens=250, temperature=0.9)
+    return stream(prompt, max_tokens=1200, temperature=0.9)
 
 def query_shakespeare(summary, style_prompt):
     prompt = f"""
@@ -93,9 +95,10 @@ Rewrite this into Shakespearean English.
 
 Rules:
 - Do NOT copy wording
-- Use archaic language (thou, thee, thy, hath, doth)
+- Use archaic language
 - Make it poetic
 - Keep meaning
+- Target length: 400–500 words
 
 STYLE:
 {style_prompt}
@@ -103,7 +106,7 @@ STYLE:
 TEXT:
 {summary}
 """
-    return query_model(prompt, max_tokens=250, temperature=0.9)
+    return query(prompt, max_tokens=1200, temperature=0.9)
 
 def critic_feedback(generated_text, score):
     prompt = f"""
@@ -118,10 +121,8 @@ Explain:
 - Why it is not fully Shakespearean
 - What is missing
 - Specific improvements
-
-Only give feedback.
 """
-    return query_model(prompt, max_tokens=150, temperature=0.6)
+    return query(prompt, max_tokens=150, temperature=0.6)
 
 def improve_prompt(old_prompt, feedback):
     prompt = f"""
@@ -135,9 +136,9 @@ FEEDBACK:
 
 Return ONLY an improved prompt.
 """
-    return query_model(prompt, max_tokens=100, temperature=0.7)
+    return query(prompt, max_tokens=100, temperature=0.7)
 
-def run_agentic_pipeline(modern, initial_prompt):
+def agentic_pipeline(modern, initial_prompt):
     current_prompt = initial_prompt
     best_score = 0
     best_output = ""
@@ -147,7 +148,7 @@ def run_agentic_pipeline(modern, initial_prompt):
 
     for i in range(3):
         shakespeare = query_shakespeare(modern, current_prompt)
-        score = compute_bert_similarity(modern, shakespeare)
+        score = bert_similarity(modern, shakespeare)
 
         feedback = critic_feedback(shakespeare, score)
         new_prompt = improve_prompt(current_prompt, feedback)
@@ -187,22 +188,22 @@ style_options = [
     "Other"
 ]
 
-hamlet_text = st.text_area("Enter Hamlet Excerpt", height=250, key="hamlet_text")
-selected_style = st.selectbox("Choose a Style", style_options, key="selected_style")
+hamlet_text = st.text_area("Enter Hamlet Excerpt:", height=250, key="hamlet_text")
+selected_style = st.selectbox("Choose a Style:", style_options, key="selected_style")
 
 custom_style = st.session_state.get("custom_style", "")
 
 if selected_style == "Other":
-    st.text_input("Enter your custom style", key="custom_style")
+    st.text_input("Enter your custom style:", key="custom_style")
     custom_style = st.session_state.get("custom_style", "")
 
 final_style_prompt = custom_style.strip() if selected_style == "Other" else selected_style
 
 col1, col2 = st.columns(2)
-run_default = col1.button("Run Default")
-run_agentic = col2.button("Run Agentic")
+default = col1.button("Run Default Transcription")
+agentic = col2.button("Run Agentic Transcription")
 
-if run_default or run_agentic:
+if default or agentic:
 
     if not hamlet_text.strip():
         st.error("Please enter some text.")
@@ -217,108 +218,102 @@ if run_default or run_agentic:
         st.stop()
 
     st.subheader("Step 1: Modern English Summary")
-    modern = to_modern_english_stream(hamlet_text)
+    modern = modern_english_stream(hamlet_text)
 
-    cosine1 = compute_bert_similarity(hamlet_text, modern)
-    label1 = get_similarity_label(cosine1)
+    cosine1 = bert_similarity(hamlet_text, modern)
+    label1 = get_score(cosine1)
 
-    st.subheader("Step 1 Similarity")
-    st.success(f"{cosine1:.4f} ({label1})")
+    st.subheader("Step 1: Similarity")
+    st.success(f"{cosine1:.4f} {label1}")
 
     st.subheader("Step 2: Shakespeare Style Rewrite")
 
     agent_history_text = ""
 
-    if run_default:
-        shakespeare = to_shakespeare_stream(modern, final_style_prompt)
-        cosine2 = compute_bert_similarity(modern, shakespeare)
+    if default:
+        shakespeare = shakespeare_stream(modern, final_style_prompt)
+        cosine2 = bert_similarity(modern, shakespeare)
 
     else:
-        shakespeare, cosine2, final_prompt_used, history = run_agentic_pipeline(
+        shakespeare, cosine2, final_prompt_used, history = agentic_pipeline(
             modern,
             final_style_prompt
         )
 
-        st.subheader("Agentic Improvement Process")
+        st.subheader("Agentic Improvement Process:")
 
         for step in history:
-            st.markdown(f"Iteration {step['iteration']}")
-            st.markdown("Prompt Used")
+            st.markdown(f"Iteration: {step['iteration']}")
             st.write(step["prompt"])
-            st.markdown("Generated Output")
             st.write(step["output"])
-            st.markdown("Score")
             st.success(f"{step['score']:.4f}")
-            st.markdown("Critique")
             st.info(step["feedback"])
-            st.markdown("Improved Prompt")
             st.code(step["new_prompt"])
 
             agent_history_text += f"""
-ITERATION {step['iteration']}
-========================
-PROMPT USED
+ITERATION: {step['iteration']}
+
+PROMPT USED:
 {step['prompt']}
 
-OUTPUT
+OUTPUT:
 {step['output']}
 
-SCORE
+SCORE:
 {step['score']:.4f}
 
-CRITIQUE
+CRITIQUE:
 {step['feedback']}
 
-IMPROVED PROMPT
+IMPROVED PROMPT:
 {step['new_prompt']}
-
 """
 
-        st.subheader("Final Output")
+        st.subheader("Final Output:")
         st.markdown(shakespeare)
 
-    label2 = get_similarity_label(cosine2)
+    label2 = get_score(cosine2)
 
-    st.subheader("Step 2 Similarity")
-    st.success(f"{cosine2:.4f} ({label2})")
+    st.subheader("Step 2: Similarity")
+    st.success(f"{cosine2:.4f} {label2}")
 
-    if run_agentic:
-        st.subheader("Final Prompt Used")
+    if agentic:
+        st.subheader("Final Prompt Used:")
         st.write(final_prompt_used)
 
     output_text = f"""
-ORIGINAL TEXT
-========================
+ORIGINAL TEXT:
+
 {hamlet_text}
 
-MODERN ENGLISH SUMMARY
-========================
+MODERN ENGLISH SUMMARY:
+
 {modern}
 
-SHAKESPEARE STYLE OUTPUT
-========================
+SHAKESPEARE STYLE OUTPUT:
+
 {shakespeare}
 
-STEP 1 SIMILARITY
-========================
+STEP 1: SIMILARITY:
+
 Score: {cosine1:.4f}
 Level: {label1}
 
-STEP 2 SIMILARITY
-========================
+STEP 2: SIMILARITY:
+
 Score: {cosine2:.4f}
 Level: {label2}
 """
 
-    if run_agentic:
+    if agentic:
         output_text += f"""
 
-FINAL PROMPT USED
-========================
+FINAL PROMPT USED:
+
 {final_prompt_used}
 
-AGENTIC PROCESS
-========================
+AGENTIC PROCESS:
+
 {agent_history_text}
 """
 
