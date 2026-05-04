@@ -80,11 +80,11 @@
   
   Open project in Visual Studio Code
   
-  Install libraries listed above in terminal
+  Install libraries listed above in VS Code Terminal
 
       streamlit run app.py
 
-  Web app will automatically open if ran on local PC
+  Web app will automatically open if ran on Local PC
     
 
     
