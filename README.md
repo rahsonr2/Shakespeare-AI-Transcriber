@@ -1,5 +1,7 @@
 # AI-Transcriber-CS630-Final (How to Run)
 
+**Note: Download app.py and secrets.toml from this repo to a project folder. Create a new folder named ".streamlit" inside the project folder & move secrets.toml into that folder. app.py should not be in the ".streamlit" folder.**
+
 # 1(a). Access either Delta AI or Purdue Anvil via Terminal
   Delta AI instructions:
 
